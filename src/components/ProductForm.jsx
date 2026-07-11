@@ -7,22 +7,38 @@ const emptyValues = {
   price: '',
 }
 
-function ProductForm({ onSubmit, initialValues = {}, submitLabel = 'Save product', title = 'Product details' }) {
-  const [formData, setFormData] = useState({ ...emptyValues, ...initialValues })
+function ProductForm({ onSubmit, initialValues, submitLabel = 'Save product', title = 'Product details' }) {
+  const [formData, setFormData] = useState({ ...emptyValues, ...(initialValues || {}) })
   const nameId = useId()
   const originId = useId()
   const descriptionId = useId()
   const priceId = useId()
 
+  const initialValuesSignature = initialValues
+    ? `${initialValues.id ?? 'new'}-${initialValues.name ?? ''}-${initialValues.origin ?? ''}-${initialValues.description ?? ''}-${initialValues.price ?? ''}`
+    : 'new'
+
   useEffect(() => {
-    setFormData({ ...emptyValues, ...initialValues })
-  }, [initialValues])
+    setFormData({ ...emptyValues, ...(initialValues || {}) })
+  }, [initialValuesSignature])
 
   const handleSubmit = (event) => {
     event.preventDefault()
+
+    const trimmedValues = {
+      name: formData.name?.trim() || '',
+      origin: formData.origin?.trim() || '',
+      description: formData.description?.trim() || '',
+      price: String(formData.price ?? '').trim(),
+    }
+
+    if (!trimmedValues.name || !trimmedValues.origin || !trimmedValues.description || trimmedValues.price === '') {
+      return
+    }
+
     onSubmit({
-      ...formData,
-      price: Number(formData.price),
+      ...trimmedValues,
+      price: Number(trimmedValues.price),
     })
   }
 

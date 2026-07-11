@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { HashRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
 import NavBar from './components/NavBar'
 import { StoreProvider } from './context/StoreContext'
@@ -23,9 +23,11 @@ function RedirectHandler() {
 }
 
 function App() {
+  const routerBaseName = import.meta.env.PROD ? '/React2SummativeLab' : '/'
+
   return (
     <StoreProvider>
-      <HashRouter>
+      <BrowserRouter basename={routerBaseName}>
         <RedirectHandler />
         <div className="app-shell">
           <NavBar />
@@ -34,11 +36,12 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/products" element={<Products />} />
               <Route path="/products/new" element={<AddProduct />} />
-              <Route path="*" element={<Home />} />
+              <Route path="/home" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
         </div>
-      </HashRouter>
+      </BrowserRouter>
     </StoreProvider>
   )
 }

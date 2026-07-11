@@ -36,16 +36,24 @@ function Products() {
       return
     }
 
-    await updateProduct(selectedProduct.id, formData)
-    setFeedback(`${selectedProduct.name} updated successfully.`)
+    try {
+      await updateProduct(selectedProduct.id, formData)
+      setFeedback(`${selectedProduct.name} updated successfully.`)
+    } catch (submitError) {
+      setFeedback(submitError.message || 'Unable to update this product right now.')
+    }
   }
 
   const handleDelete = async (product) => {
-    await deleteProduct(product.id)
-    setFeedback(`${product.name} removed from the catalog.`)
+    try {
+      await deleteProduct(product.id)
+      setFeedback(`${product.name} removed from the catalog.`)
 
-    if (selectedProductId === product.id) {
-      setSelectedProductId(null)
+      if (selectedProductId === product.id) {
+        setSelectedProductId(null)
+      }
+    } catch (submitError) {
+      setFeedback(submitError.message || 'Unable to remove this product right now.')
     }
   }
 

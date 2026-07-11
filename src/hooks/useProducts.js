@@ -1,31 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useStore } from '../context/StoreContext'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
 const STORAGE_KEY = 'harbor-and-hearth-products'
-
-const fallbackProducts = [
-  {
-    id: 1,
-    description: 'Medium roast with toasted almond and citrus notes.',
-    name: 'Vanilla Bean',
-    origin: 'Colombia',
-    price: 10.5,
-  },
-  {
-    id: 2,
-    description: 'Dark roast with rich cocoa and a smoky finish.',
-    name: 'House Blend',
-    origin: 'Vietnam',
-    price: 12,
-  },
-  {
-    id: 3,
-    description: 'Bright single origin with berry sweetness and jasmine florals.',
-    name: 'Sunrise Reserve',
-    origin: 'Ethiopia',
-    price: 14.75,
-  },
-]
 
 function normalizeProduct(product) {
   return {
@@ -36,20 +13,20 @@ function normalizeProduct(product) {
 
 function readStoredProducts() {
   if (typeof window === 'undefined') {
-    return fallbackProducts
+    return []
   }
 
   try {
     const rawValue = window.localStorage.getItem(STORAGE_KEY)
 
     if (!rawValue) {
-      return fallbackProducts
+      return []
     }
 
     const parsedValue = JSON.parse(rawValue)
-    return Array.isArray(parsedValue) && parsedValue.length ? parsedValue : fallbackProducts
+    return Array.isArray(parsedValue) ? parsedValue : []
   } catch {
-    return fallbackProducts
+    return []
   }
 }
 
@@ -62,10 +39,11 @@ function writeStoredProducts(products) {
 }
 
 export function useProducts() {
-  const [products, setProducts] = useState([])
+  const { products, setProducts } = useStore()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [refreshTick, setRefreshTick] = useState(0)
+  const [initialized, setInitialized] = useState(false)
 
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -84,18 +62,31 @@ export function useProducts() {
       writeStoredProducts(normalizedProducts)
     } catch {
       const storedProducts = readStoredProducts()
-      setProducts(storedProducts)
+      if (storedProducts.length) {
+        setProducts(storedProducts)
+      }
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [setProducts])
 
   useEffect(() => {
-    fetchProducts()
-  }, [fetchProducts, refreshTick])
+    if (!initialized) {
+      setInitialized(true)
+      fetchProducts()
+    }
+  }, [fetchProducts, initialized])
 
   const addProduct = async (product) => {
     const normalizedProduct = normalizeProduct(product)
+    const fallbackProduct = {
+      ...normalizedProduct,
+      id: Date.now(),
+    }
+
+    const nextProducts = [fallbackProduct, ...products]
+    setProducts(nextProducts)
+    writeStoredProducts(nextProducts)
 
     try {
       const response = await fetch(`${API_URL}/coffee`, {
@@ -109,24 +100,11 @@ export function useProducts() {
       }
 
       const createdProduct = await response.json()
-      setProducts((current) => {
-        const nextProducts = [normalizeProduct(createdProduct), ...current]
-        writeStoredProducts(nextProducts)
-        return nextProducts
-      })
+      const persistedProducts = [normalizeProduct(createdProduct), ...products]
+      setProducts(persistedProducts)
+      writeStoredProducts(persistedProducts)
       return createdProduct
     } catch {
-      const fallbackProduct = {
-        ...normalizedProduct,
-        id: Date.now(),
-      }
-
-      setProducts((current) => {
-        const nextProducts = [fallbackProduct, ...current]
-        writeStoredProducts(nextProducts)
-        return nextProducts
-      })
-
       return fallbackProduct
     }
   }
@@ -146,23 +124,18 @@ export function useProducts() {
       }
 
       const updatedProduct = await response.json()
-      setProducts((current) => {
-        const nextProducts = current.map((product) =>
-          product.id === id ? normalizeProduct(updatedProduct) : product,
-        )
-        writeStoredProducts(nextProducts)
-        return nextProducts
-      })
+      const nextProducts = products.map((product) =>
+        product.id === id ? normalizeProduct(updatedProduct) : product,
+      )
+      setProducts(nextProducts)
+      writeStoredProducts(nextProducts)
       return updatedProduct
     } catch {
-      setProducts((current) => {
-        const nextProducts = current.map((product) =>
-          product.id === id ? { ...product, ...normalizedUpdates } : product,
-        )
-        writeStoredProducts(nextProducts)
-        return nextProducts
-      })
-
+      const nextProducts = products.map((product) =>
+        product.id === id ? { ...product, ...normalizedUpdates } : product,
+      )
+      setProducts(nextProducts)
+      writeStoredProducts(nextProducts)
       return { id, ...normalizedUpdates }
     }
   }
@@ -180,20 +153,21 @@ export function useProducts() {
       // fall back to local state updates when the API server is unavailable
     }
 
-    setProducts((current) => {
-      const nextProducts = current.filter((product) => product.id !== id)
-      writeStoredProducts(nextProducts)
-      return nextProducts
-    })
+    const nextProducts = products.filter((product) => product.id !== id)
+    setProducts(nextProducts)
+    writeStoredProducts(nextProducts)
   }
 
-  return {
-    products,
-    loading,
-    error,
-    addProduct,
-    updateProduct,
-    deleteProduct,
-    refreshProducts: () => setRefreshTick((tick) => tick + 1),
-  }
+  return useMemo(
+    () => ({
+      products,
+      loading,
+      error,
+      addProduct,
+      updateProduct,
+      deleteProduct,
+      refreshProducts: () => setRefreshTick((tick) => tick + 1),
+    }),
+    [products, loading, error],
+  )
 }

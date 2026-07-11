@@ -17,8 +17,12 @@ function NavBar() {
         <NavLink to="/" end>
           Home
         </NavLink>
-        <NavLink to="/products">Products</NavLink>
-        <NavLink to="/products/new">Add product</NavLink>
+        <NavLink to="/products" end>
+          Products
+        </NavLink>
+        <NavLink to="/products/new" end>
+          Add product
+        </NavLink>
       </nav>
     </header>
   )

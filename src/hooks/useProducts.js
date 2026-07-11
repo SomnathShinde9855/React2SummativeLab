@@ -1,6 +1,65 @@
 import { useCallback, useEffect, useState } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const STORAGE_KEY = 'harbor-and-hearth-products'
+
+const fallbackProducts = [
+  {
+    id: 1,
+    description: 'Medium roast with toasted almond and citrus notes.',
+    name: 'Vanilla Bean',
+    origin: 'Colombia',
+    price: 10.5,
+  },
+  {
+    id: 2,
+    description: 'Dark roast with rich cocoa and a smoky finish.',
+    name: 'House Blend',
+    origin: 'Vietnam',
+    price: 12,
+  },
+  {
+    id: 3,
+    description: 'Bright single origin with berry sweetness and jasmine florals.',
+    name: 'Sunrise Reserve',
+    origin: 'Ethiopia',
+    price: 14.75,
+  },
+]
+
+function normalizeProduct(product) {
+  return {
+    ...product,
+    price: Number(product.price),
+  }
+}
+
+function readStoredProducts() {
+  if (typeof window === 'undefined') {
+    return fallbackProducts
+  }
+
+  try {
+    const rawValue = window.localStorage.getItem(STORAGE_KEY)
+
+    if (!rawValue) {
+      return fallbackProducts
+    }
+
+    const parsedValue = JSON.parse(rawValue)
+    return Array.isArray(parsedValue) && parsedValue.length ? parsedValue : fallbackProducts
+  } catch {
+    return fallbackProducts
+  }
+}
+
+function writeStoredProducts(products) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(products))
+}
 
 export function useProducts() {
   const [products, setProducts] = useState([])
@@ -20,9 +79,12 @@ export function useProducts() {
       }
 
       const data = await response.json()
-      setProducts(data)
-    } catch (err) {
-      setError(err.message || 'Unable to load products right now.')
+      const normalizedProducts = Array.isArray(data) ? data.map(normalizeProduct) : []
+      setProducts(normalizedProducts)
+      writeStoredProducts(normalizedProducts)
+    } catch {
+      const storedProducts = readStoredProducts()
+      setProducts(storedProducts)
     } finally {
       setLoading(false)
     }
@@ -33,55 +95,96 @@ export function useProducts() {
   }, [fetchProducts, refreshTick])
 
   const addProduct = async (product) => {
-    const response = await fetch(`${API_URL}/coffee`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...product,
-        price: Number(product.price),
-      }),
-    })
+    const normalizedProduct = normalizeProduct(product)
 
-    if (!response.ok) {
-      throw new Error('Product could not be created.')
+    try {
+      const response = await fetch(`${API_URL}/coffee`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(normalizedProduct),
+      })
+
+      if (!response.ok) {
+        throw new Error('Product could not be created.')
+      }
+
+      const createdProduct = await response.json()
+      setProducts((current) => {
+        const nextProducts = [normalizeProduct(createdProduct), ...current]
+        writeStoredProducts(nextProducts)
+        return nextProducts
+      })
+      return createdProduct
+    } catch {
+      const fallbackProduct = {
+        ...normalizedProduct,
+        id: Date.now(),
+      }
+
+      setProducts((current) => {
+        const nextProducts = [fallbackProduct, ...current]
+        writeStoredProducts(nextProducts)
+        return nextProducts
+      })
+
+      return fallbackProduct
     }
-
-    const createdProduct = await response.json()
-    setProducts((current) => [createdProduct, ...current])
-    return createdProduct
   }
 
   const updateProduct = async (id, updates) => {
-    const response = await fetch(`${API_URL}/coffee/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...updates,
-        price: Number(updates.price),
-      }),
-    })
+    const normalizedUpdates = normalizeProduct(updates)
 
-    if (!response.ok) {
-      throw new Error('Product could not be updated.')
+    try {
+      const response = await fetch(`${API_URL}/coffee/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(normalizedUpdates),
+      })
+
+      if (!response.ok) {
+        throw new Error('Product could not be updated.')
+      }
+
+      const updatedProduct = await response.json()
+      setProducts((current) => {
+        const nextProducts = current.map((product) =>
+          product.id === id ? normalizeProduct(updatedProduct) : product,
+        )
+        writeStoredProducts(nextProducts)
+        return nextProducts
+      })
+      return updatedProduct
+    } catch {
+      setProducts((current) => {
+        const nextProducts = current.map((product) =>
+          product.id === id ? { ...product, ...normalizedUpdates } : product,
+        )
+        writeStoredProducts(nextProducts)
+        return nextProducts
+      })
+
+      return { id, ...normalizedUpdates }
     }
-
-    const updatedProduct = await response.json()
-    setProducts((current) =>
-      current.map((product) => (product.id === id ? updatedProduct : product)),
-    )
-    return updatedProduct
   }
 
   const deleteProduct = async (id) => {
-    const response = await fetch(`${API_URL}/coffee/${id}`, {
-      method: 'DELETE',
-    })
+    try {
+      const response = await fetch(`${API_URL}/coffee/${id}`, {
+        method: 'DELETE',
+      })
 
-    if (!response.ok) {
-      throw new Error('Product could not be deleted.')
+      if (!response.ok) {
+        throw new Error('Product could not be deleted.')
+      }
+    } catch {
+      // fall back to local state updates when the API server is unavailable
     }
 
-    setProducts((current) => current.filter((product) => product.id !== id))
+    setProducts((current) => {
+      const nextProducts = current.filter((product) => product.id !== id)
+      writeStoredProducts(nextProducts)
+      return nextProducts
+    })
   }
 
   return {

@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import App from './App'
 import { StoreProvider, useStore } from './context/StoreContext'
 
 function StoreName() {
@@ -8,6 +9,10 @@ function StoreName() {
 }
 
 describe('Store context', () => {
+  beforeEach(() => {
+    window.history.pushState({}, '', '/')
+  })
+
   it('exposes the storefront name', () => {
     render(
       <StoreProvider>
@@ -16,5 +21,13 @@ describe('Store context', () => {
     )
 
     expect(screen.getByRole('heading', { name: /Harbor & Hearth/i })).toBeInTheDocument()
+  })
+
+  it('renders the add-product page from a hash-based route', () => {
+    window.history.pushState({}, '', '/#/products/new')
+
+    render(<App />)
+
+    expect(screen.getByText(/Publish a new product/i)).toBeInTheDocument()
   })
 })

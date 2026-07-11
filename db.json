@@ -1,0 +1,33 @@
+{
+  "store_info": [
+    {
+      "id": 1,
+      "name": "Harbor & Hearth",
+      "description": "A modern coffee storefront with premium blends and seasonal launches.",
+      "phone_number": "555-0148"
+    }
+  ],
+  "coffee": [
+    {
+      "id": 1,
+      "description": "Medium roast with toasted almond and citrus notes.",
+      "name": "Vanilla Bean",
+      "origin": "Colombia",
+      "price": 10.5
+    },
+    {
+      "id": 2,
+      "description": "Dark roast with rich cocoa and a smoky finish.",
+      "name": "House Blend",
+      "origin": "Vietnam",
+      "price": 12
+    },
+    {
+      "id": 3,
+      "description": "Bright single origin with berry sweetness and jasmine florals.",
+      "name": "Sunrise Reserve",
+      "origin": "Ethiopia",
+      "price": 14.75
+    }
+  ]
+}

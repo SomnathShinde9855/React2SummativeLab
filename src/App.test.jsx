@@ -35,6 +35,14 @@ describe('Store context', () => {
     expect(screen.getByText(/Publish a new product/i)).toBeInTheDocument()
   })
 
+  it('renders the add-product page from a GitHub Pages-style hash route', () => {
+    window.history.pushState({}, '', '/React2SummativeLab/#/products/new')
+
+    render(<App />)
+
+    expect(screen.getByText(/Publish a new product/i)).toBeInTheDocument()
+  })
+
   it('shows a newly created product on the products page', async () => {
     render(
       <StoreProvider>

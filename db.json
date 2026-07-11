@@ -28,20 +28,6 @@
       "name": "Sunrise Reserve",
       "origin": "Ethiopia",
       "price": 14.75
-    },
-    {
-      "name": "test",
-      "origin": "gg",
-      "description": "ted",
-      "price": 441,
-      "id": "y4bYqTScxIA"
-    },
-    {
-      "name": "tea",
-      "origin": "test",
-      "description": "how",
-      "price": 41,
-      "id": "8SgdQLu-nwc"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"
